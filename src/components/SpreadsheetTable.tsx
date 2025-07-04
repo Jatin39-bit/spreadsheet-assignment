@@ -20,7 +20,7 @@ interface ContextMenuProps {
   rowIndex?: number;
   colIndex?: number;
   onClose: () => void;
-  onAction: (action: string, data?: any) => void;
+  onAction: (action: string, data?: { rowIndex?: number; colIndex?: number }) => void;
 }
 
 const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, type, rowIndex, colIndex, onClose, onAction }) => {
@@ -97,7 +97,7 @@ export default function SpreadsheetTable({
   cellViewMode = 'normal'
 }: SpreadsheetTableProps) {
   const [data, setData] = useState<SpreadsheetRow[]>(mockSpreadsheetData);
-  const [columnWidths, setColumnWidths] = useState<number[]>(Array(15).fill(160));
+  const [columnWidths, setColumnWidths] = useState<number[]>([]);
   const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
   const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
   const [editingCell, setEditingCell] = useState<{row: number, col: number} | null>(null);
@@ -237,12 +237,12 @@ export default function SpreadsheetTable({
   }, [data, filterField, filterValue, sortField, sortOrder]);
 
   // Check if a cell matches the search term
-  const cellMatchesSearch = (row: SpreadsheetRow, fieldName: string): boolean => {
+  const cellMatchesSearch = useCallback((row: SpreadsheetRow, fieldName: string): boolean => {
     if (!searchTerm.trim()) return false;
     
     const cellValue = String(row[fieldName as keyof SpreadsheetRow] || '').toLowerCase();
     return cellValue.includes(searchTerm.toLowerCase());
-  };
+  }, [searchTerm]);
 
   // Highlight matching text in a string
   const highlightText = (text: string, searchTerm: string): React.ReactElement => {
@@ -269,7 +269,7 @@ export default function SpreadsheetTable({
   };
 
   // Filter visible headers based on hidden fields
-  const visibleHeaders = allHeaders.filter((header, index) => {
+  const visibleHeaders = allHeaders.filter((_, index) => {
     const fieldName = allFields[index];
     return !hiddenFields.includes(fieldName);
   });
@@ -281,13 +281,7 @@ export default function SpreadsheetTable({
     console.log(`URL clicked: ${url}`);
   };
 
-  const handleCellClick = (rowId: number, colIndex: number) => {
-    if (editingCell) {
-      saveEdit();
-    }
-    setSelectedCell({row: rowId, col: colIndex});
-    console.log(`Cell clicked: Row ${rowId}, Column ${colIndex}`);
-  };
+
 
   const handleCellDoubleClick = (rowId: number, colIndex: number) => {
     const cellValue = getCellValue(rowId, colIndex);
@@ -312,6 +306,28 @@ export default function SpreadsheetTable({
         row.id === rowId ? { ...row, [field]: value } : row
       )
     );
+    
+    // Check if we need to adjust column width for long content
+    if (value.length > 30) { // Threshold for width adjustment
+      const charWidth = 8;
+      const padding = 24;
+      const minWidth = 120;
+      const maxWidth = 400;
+      const newWidth = Math.min(
+        Math.max(minWidth, (value.length * charWidth) + padding),
+        maxWidth
+      );
+      
+      setColumnWidths(prev => {
+        const currentWidth = prev[colIndex] || 120;
+        if (newWidth > currentWidth) {
+          const newWidths = [...prev];
+          newWidths[colIndex] = newWidth;
+          return newWidths;
+        }
+        return prev;
+      });
+    }
   };
 
   const saveEdit = () => {
@@ -349,13 +365,74 @@ export default function SpreadsheetTable({
     // Add empty values for custom columns
     customColumns.forEach(col => {
       const fieldName = col.toLowerCase().replace(/\s+/g, '');
-      (newRow as any)[fieldName] = '';
+      (newRow as Record<string, string>)[fieldName] = '';
     });
     
     setData([...data, newRow]);
     console.log('New row added');
   };
 
+  // Calculate smart column widths based on content
+  const calculateSmartColumnWidths = useCallback(() => {
+    const minWidth = 120; // Minimum width for usability
+    const maxWidth = 400; // Maximum width (roughly 50 characters)
+    const charWidth = 8; // Approximate width per character
+    const padding = 24; // Cell padding
+    
+    const newWidths: number[] = [];
+    
+    visibleHeaders.forEach((header, colIndex) => {
+      let maxContentLength = header.length; // Start with header length
+      
+      // Check all rows for this column's content length
+      if (processedData.length > 0) {
+        processedData.forEach(row => {
+          const fieldName = visibleFields[colIndex];
+          const cellValue = String(row[fieldName as keyof SpreadsheetRow] || '');
+          
+          // For status and priority, use formatted display text
+          let displayText = cellValue;
+          if (fieldName === 'status') {
+            displayText = formatStatus(row.status);
+          } else if (fieldName === 'priority') {
+            displayText = row.priority;
+          }
+          
+          maxContentLength = Math.max(maxContentLength, displayText.length);
+        });
+      }
+      
+      // Calculate width: content length * char width + padding, within min/max bounds
+      const calculatedWidth = Math.min(
+        Math.max(minWidth, (maxContentLength * charWidth) + padding),
+        maxWidth
+      );
+      
+      newWidths[colIndex] = calculatedWidth;
+    });
+    
+    return newWidths;
+  }, [visibleHeaders, visibleFields, processedData]);
+
+  // Initialize smart column widths
+  useEffect(() => {
+    if (visibleHeaders.length > 0) {
+      const smartWidths = calculateSmartColumnWidths();
+      setColumnWidths(prev => {
+        // Always update if we don't have enough widths or if it's the initial load
+        if (prev.length !== visibleHeaders.length) {
+          return smartWidths;
+        }
+        // Update if all widths are still default (160) or if we have content to measure
+        if (prev.every(w => w === 160 || w === 120) && processedData.length > 0) {
+          return smartWidths;
+        }
+        return prev;
+      });
+    }
+  }, [visibleHeaders, processedData, calculateSmartColumnWidths]);
+
+  // Update column widths when new columns are added
   const addColumn = () => {
     const columnName = prompt('Enter new column name:');
     if (columnName && columnName.trim()) {
@@ -371,10 +448,16 @@ export default function SpreadsheetTable({
         }))
       );
       
-      // Extend column widths array
-      setColumnWidths(prev => [...prev, 160]);
+      // Calculate smart width for the new column (header length + padding)
+      const charWidth = 8;
+      const padding = 24;
+      const minWidth = 120;
+      const newColumnWidth = Math.max(minWidth, (newColumnName.length * charWidth) + padding);
       
-      console.log(`New column "${newColumnName}" added`);
+      // Extend column widths array with smart width
+      setColumnWidths(prev => [...prev, newColumnWidth]);
+      
+      console.log(`New column "${newColumnName}" added with width ${newColumnWidth}px`);
     }
   };
 
@@ -709,13 +792,14 @@ export default function SpreadsheetTable({
     let newCol = selectedCell.col;
 
     switch (direction) {
-      case 'up':
+      case 'up': {
         const upRowIndex = processedData.findIndex(row => row.id === selectedCell.row);
         if (upRowIndex > 0) {
           newRow = processedData[upRowIndex - 1].id;
         }
         break;
-      case 'down':
+      }
+      case 'down': {
         const downRowIndex = processedData.findIndex(row => row.id === selectedCell.row);
         if (downRowIndex < processedData.length - 1) {
           newRow = processedData[downRowIndex + 1].id;
@@ -725,6 +809,7 @@ export default function SpreadsheetTable({
           newRow = Math.max(...data.map(row => row.id)) + 1;
         }
         break;
+      }
       case 'left':
         newCol = Math.max(0, selectedCell.col - 1);
         break;
@@ -777,21 +862,21 @@ export default function SpreadsheetTable({
   };
 
   // Context menu actions
-  const handleContextAction = (action: string, data?: any) => {
+  const handleContextAction = (action: string, data?: { rowIndex?: number; colIndex?: number }) => {
     const { rowIndex, colIndex } = data || {};
     
     switch (action) {
       case 'addRowAbove':
-        addRowAt(rowIndex);
+        if (rowIndex !== undefined) addRowAt(rowIndex);
         break;
       case 'addRowBelow':
-        addRowAt(rowIndex + 1);
+        if (rowIndex !== undefined) addRowAt(rowIndex + 1);
         break;
       case 'addColumnLeft':
-        addColumnAt(colIndex);
+        if (colIndex !== undefined) addColumnAt(colIndex);
         break;
       case 'addColumnRight':
-        addColumnAt(colIndex + 1);
+        if (colIndex !== undefined) addColumnAt(colIndex + 1);
         break;
       case 'deleteRow':
         if (rowIndex !== undefined) {
@@ -830,7 +915,7 @@ export default function SpreadsheetTable({
     }
   };
 
-  // Add row at specific position
+  // Update addRowAt to recalculate widths if needed
   const addRowAt = (position?: number) => {
     const newId = Math.max(...data.map(row => row.id)) + 1;
     const newRow: SpreadsheetRow = {
@@ -849,7 +934,7 @@ export default function SpreadsheetTable({
     // Add empty values for custom columns
     customColumns.forEach(col => {
       const fieldName = col.toLowerCase().replace(/\s+/g, '');
-      (newRow as any)[fieldName] = '';
+      (newRow as Record<string, string>)[fieldName] = '';
     });
     
     if (position !== undefined && position < data.length) {
@@ -887,18 +972,24 @@ export default function SpreadsheetTable({
         }))
       );
       
-      // Extend column widths array
+      // Calculate smart width for the new column (header length + padding)
+      const charWidth = 8;
+      const padding = 24;
+      const minWidth = 120;
+      const newColumnWidth = Math.max(minWidth, (newColumnName.length * charWidth) + padding);
+      
+      // Extend column widths array with smart width
       setColumnWidths(prev => {
         const newWidths = [...prev];
         if (position !== undefined && position < prev.length) {
-          newWidths.splice(position, 0, 160);
+          newWidths.splice(position, 0, newColumnWidth);
         } else {
-          newWidths.push(160);
+          newWidths.push(newColumnWidth);
         }
         return newWidths;
       });
       
-      console.log(`New column "${newColumnName}" added at position:`, position);
+      console.log(`New column "${newColumnName}" added at position: ${position} with width ${newColumnWidth}px`);
     }
   };
 
@@ -922,7 +1013,7 @@ export default function SpreadsheetTable({
         setData(prevData => 
           prevData.map(row => {
             const newRow = { ...row };
-            delete (newRow as any)[fieldName];
+            delete newRow[fieldName];
             return newRow;
           })
         );
@@ -955,7 +1046,7 @@ export default function SpreadsheetTable({
           // Clear all fields except id
           Object.keys(clearedRow).forEach(key => {
             if (key !== 'id') {
-              (clearedRow as any)[key] = '';
+              clearedRow[key] = '';
             }
           });
           return clearedRow;
@@ -988,7 +1079,7 @@ export default function SpreadsheetTable({
           setSelectedCells(new Set());
         }
         break;
-      case 'duplicateRows':
+      case 'duplicateRows': {
         const rowsToDuplicate = data.filter(row => uniqueRowIds.includes(row.id));
         const newRows = rowsToDuplicate.map(row => ({
           ...row,
@@ -997,6 +1088,7 @@ export default function SpreadsheetTable({
         setData([...data, ...newRows]);
         setSelectedCells(new Set());
         break;
+      }
       case 'clearRows':
         setData(prevData => 
           prevData.map(row => {
@@ -1004,7 +1096,7 @@ export default function SpreadsheetTable({
               const clearedRow = { ...row };
               Object.keys(clearedRow).forEach(key => {
                 if (key !== 'id') {
-                  (clearedRow as any)[key] = '';
+                  clearedRow[key] = '';
                 }
               });
               return clearedRow;
@@ -1040,203 +1132,244 @@ export default function SpreadsheetTable({
     }
   };
 
+  // Add auto-resize columns button to toolbar
+  const handleAutoResizeColumns = () => {
+    const smartWidths = calculateSmartColumnWidths();
+    setColumnWidths(smartWidths);
+    console.log('Columns auto-resized to fit content');
+  };
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden h-full flex flex-col shadow-sm">
       {/* Toolbar */}
-      <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-        <div className="flex items-center space-x-3">
+      <div className="flex items-center justify-between p-2 sm:p-3 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+        <div className="flex items-center space-x-3 flex-1 min-w-0">
           {(searchTerm || filterField || sortField) && (
-            <div className="flex items-center space-x-2 text-xs text-gray-600">
+            <div className="flex items-center gap-2 text-xs text-gray-600">
               {searchTerm && (
-                <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full border border-yellow-200 font-medium">
+                <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full border border-yellow-200 font-medium whitespace-nowrap">
                   Found {searchResultsCount} match{searchResultsCount !== 1 ? 'es' : ''} for "{searchTerm}"
                 </span>
               )}
               {filterField && (
-                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full border border-blue-200 font-medium">
+                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full border border-blue-200 font-medium whitespace-nowrap">
                   Filtered by {filterField}: {filterValue}
                 </span>
               )}
               {sortField && (
-                <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full border border-purple-200 font-medium">
+                <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full border border-purple-200 font-medium whitespace-nowrap">
                   Sorted by {sortField} ({sortOrder?.toUpperCase()})
                 </span>
               )}
             </div>
           )}
-          <div className="text-xs text-gray-500 font-medium">
-            View: {cellViewMode} • Showing {processedData.length} of {data.length} rows • {allHeaders.length} columns
+          <div className="flex items-center space-x-4 text-xs text-gray-500">
+            <span className="font-medium whitespace-nowrap">
+              View: {cellViewMode} • {processedData.length} of {data.length} rows • {allHeaders.length} columns
+            </span>
+            {/* Keyboard shortcuts help */}
+            <span className="text-gray-400 border-l border-gray-300 pl-4 hidden xl:block whitespace-nowrap">
+              Shortcuts: Ctrl+Shift+R (Add Row), Ctrl+Shift+C (Add Column), Del (Clear), Shift+Del (Delete Row)
+            </span>
+            {/* Auto-resize columns button */}
+            <button
+              onClick={handleAutoResizeColumns}
+              className="text-gray-400 border-l border-gray-300 pl-4 hover:text-gray-600 transition-colors hidden lg:block whitespace-nowrap"
+              title="Auto-resize all columns to fit content"
+            >
+              Auto-resize columns
+            </button>
           </div>
-          {/* Keyboard shortcuts help */}
-          <div className="text-xs text-gray-400 border-l border-gray-300 pl-3">
-            Shortcuts: Ctrl+Shift+R (Add Row), Ctrl+Shift+C (Add Column), Del (Clear), Shift+Del (Delete Row)
-        </div>
         </div>
         <div className="flex items-center space-x-3">
           {/* Batch actions */}
           {isMultiSelect && selectedCells.size > 0 && (
             <div className="flex items-center space-x-2 border-r border-gray-300 pr-3">
-              <span className="text-xs text-gray-600 font-medium">
+              <span className="text-xs text-gray-600 font-medium whitespace-nowrap">
                 {selectedCells.size} cells selected
               </span>
-              <button
-                onClick={() => handleBatchAction('deleteRows')}
-                className="px-3 py-1.5 bg-red-600 text-white text-xs rounded-md hover:bg-red-700 transition-colors font-medium"
-              >
-                Delete Rows
-              </button>
-              <button
-                onClick={() => handleBatchAction('duplicateRows')}
-                className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition-colors font-medium"
-              >
-                Duplicate
-              </button>
-              <button
-                onClick={() => handleBatchAction('clearRows')}
-                className="px-3 py-1.5 bg-gray-600 text-white text-xs rounded-md hover:bg-gray-700 transition-colors font-medium"
-              >
-                Clear
-              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => handleBatchAction('deleteRows')}
+                  className="px-3 py-1.5 bg-red-600 text-white text-xs rounded-md hover:bg-red-700 transition-colors font-medium"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => handleBatchAction('duplicateRows')}
+                  className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Duplicate
+                </button>
+                <button
+                  onClick={() => handleBatchAction('clearRows')}
+                  className="px-3 py-1.5 bg-gray-600 text-white text-xs rounded-md hover:bg-gray-700 transition-colors font-medium"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
           )}
           {selectedCell && !isMultiSelect && (
-          <div className="flex items-center space-x-2">
-              <span className="text-xs text-gray-600 font-medium">
-              Selected: Row {selectedCell.row}, Col {selectedCell.col + 1}
-            </span>
-            <button
-              onClick={() => selectedCell && deleteRow(selectedCell.row)}
+            <div className="flex items-center space-x-2">
+              <span className="text-xs text-gray-600 font-medium whitespace-nowrap">
+                Selected: Row {selectedCell.row}, Col {selectedCell.col + 1}
+              </span>
+              <button
+                onClick={() => selectedCell && deleteRow(selectedCell.row)}
                 className="px-3 py-1.5 bg-red-600 text-white text-xs rounded-md hover:bg-red-700 transition-colors font-medium"
-            >
-              Delete Row
-            </button>
-          </div>
-        )}
+              >
+                Delete Row
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Table container with horizontal scroll */}
       <div className="flex-1 overflow-auto">
-        <table ref={tableRef} className="w-full border-collapse bg-white">
-          <thead>
-            {/* Field names header row */}
-            <tr className="sticky top-0 z-10">
-              <th className={`w-16 ${getCellHeight()} bg-gradient-to-b from-gray-100 to-gray-50 border-r border-b border-gray-300 ${getTextSize()} text-gray-700 font-semibold sticky left-0 z-20 relative`}>
-                <div className="flex items-center justify-center">
-                  <span>#</span>
-                </div>
-              </th>
-              {visibleHeaders.map((header, index) => (
-                <th 
-                  key={header} 
-                  className={`${getCellHeight()} bg-gradient-to-b from-gray-50 to-white border-r border-b border-gray-300 ${getTextSize()} text-gray-700 font-semibold px-3 text-left relative hover:bg-gray-100 transition-colors`}
-                  style={{width: columnWidths[index] || 160, minWidth: 100}}
-                  onContextMenu={(e) => handleContextMenu(e, 'column', undefined, index)}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span className="truncate">{header}</span>
+        <div className="min-w-max">
+          <table ref={tableRef} className="w-full border-collapse bg-white">
+            <thead>
+              {/* Field names header row */}
+              <tr className="sticky top-0 z-10">
+                <th className={`w-12 sm:w-16 ${getCellHeight()} bg-gradient-to-b from-gray-100 to-gray-50 border-r border-b border-gray-300 ${getTextSize()} text-gray-700 font-semibold sticky left-0 z-20 relative`}>
+                  <div className="flex items-center justify-center">
+                    <span className="hidden sm:inline">#</span>
+                    <span className="sm:hidden text-xs">#</span>
                   </div>
-                  {/* Column resize handle */}
-                  <div 
-                    className="absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-blue-500 hover:opacity-50 transition-colors"
-                    onMouseDown={(e) => startColumnResize(index, e)}
-                  />
                 </th>
-              ))}
-              {/* Add Column button */}
-              <th 
-                className={`w-12 ${getCellHeight()} bg-gradient-to-b from-gray-50 to-white border-r border-b border-gray-300 ${getTextSize()} text-gray-700 font-semibold px-2 text-center relative`}
-              >
-                <button
-                  onClick={addColumn}
-                  className="flex items-center justify-center w-full h-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-all duration-200"
-                  title="Add new column (Ctrl+Shift+C)"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {processedData.map((row, rowIndex) => {
-              const hasRowMatch = visibleFields.some(field => cellMatchesSearch(row, field));
-              const rowHeight = getRowHeight(row);
-              return (
-                <tr key={row.id} className={`group hover:bg-blue-50 transition-colors ${hasRowMatch ? 'bg-yellow-50 border-l-2 border-yellow-400' : ''}`}>
-                  {/* Row number */}
-                  <td 
-                    className={`w-16 ${rowHeight} bg-gradient-to-r from-gray-100 to-gray-50 border-r border-b border-gray-300 ${getTextSize()} text-gray-700 font-medium text-center sticky left-0 z-10 relative hover:bg-gray-200 transition-colors`}
-                    onContextMenu={(e) => handleContextMenu(e, 'row', rowIndex)}
+                {visibleHeaders.map((header, index) => (
+                  <th 
+                    key={header} 
+                    className={`${getCellHeight()} bg-gradient-to-b from-gray-50 to-white border-r border-b border-gray-300 ${getTextSize()} text-gray-700 font-semibold px-2 sm:px-3 text-left relative hover:bg-gray-100 transition-colors`}
+                    style={{
+                      width: columnWidths[index] || 120, 
+                      minWidth: Math.max(columnWidths[index] || 120, 120),
+                      maxWidth: Math.min(columnWidths[index] || 120, 400)
+                    }}
+                    onContextMenu={(e) => handleContextMenu(e, 'column', undefined, index)}
                   >
-                    <div className="flex items-center justify-center h-full">
-                    {row.id}
+                    <div className="flex items-center space-x-1 min-w-0">
+                      <span className="truncate flex-1">{header}</span>
+                      {/* Column width indicator for long headers */}
+                      {header.length > 20 && (
+                        <span className="text-xs text-gray-400 flex-shrink-0" title={`${header.length} chars`}>
+                          •••
+                        </span>
+                      )}
                     </div>
-                  </td>
-                  
-                  {visibleHeaders.map((_, colIndex) => {
-                    const isSelected = selectedCell?.row === row.id && selectedCell?.col === colIndex;
-                    const isMultiSelected = selectedCells.has(`${row.id}-${colIndex}`);
-                    const hasMatch = cellMatchesSearch(row, visibleFields[colIndex]);
-                    const cellContent = getCellValue(row.id, colIndex);
-                    return (
-                      <td 
-                        key={colIndex}
-                        className={`${rowHeight} border-r border-b border-gray-300 ${getTextSize()} cursor-cell relative transition-all duration-200 ${
-                          isSelected ? 'border-2 border-blue-500 bg-blue-50 shadow-sm' : 
-                          isMultiSelected ? 'bg-blue-100 border-blue-300' : 'hover:border-blue-300 hover:bg-gray-50'
-                        } ${hasMatch ? 'bg-yellow-50' : ''}`}
-                        style={{width: columnWidths[colIndex] || 160, minWidth: 100}}
-                        onClick={(e) => handleCellSelection(row.id, colIndex, e)}
-                        onDoubleClick={() => handleCellDoubleClick(row.id, colIndex)}
-                        onContextMenu={(e) => handleContextMenu(e, 'cell', rowIndex, colIndex)}
-                      >
-                        <div className={`h-full flex ${cellContent.length > 50 ? 'items-start pt-2' : 'items-center'} ${cellViewMode === 'expanded' ? 'items-start pt-2' : ''}`}>
-                          {renderCell(row, colIndex)}
-                        </div>
-                      </td>
-                    );
-                  })}
-                  {/* Add Column cell */}
+                    {/* Column resize handle */}
+                    <div 
+                      className="absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-blue-500 hover:opacity-50 transition-colors"
+                      onMouseDown={(e) => startColumnResize(index, e)}
+                    />
+                  </th>
+                ))}
+                {/* Add Column button */}
+                <th 
+                  className={`w-10 sm:w-12 ${getCellHeight()} bg-gradient-to-b from-gray-50 to-white border-r border-b border-gray-300 ${getTextSize()} text-gray-700 font-semibold px-1 sm:px-2 text-center relative`}
+                >
+                  <button
+                    onClick={addColumn}
+                    className="flex items-center justify-center w-full h-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-all duration-200"
+                    title="Add new column (Ctrl+Shift+C)"
+                  >
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {processedData.map((row, rowIndex) => {
+                const hasRowMatch = visibleFields.some(field => cellMatchesSearch(row, field));
+                const rowHeight = getRowHeight(row);
+                return (
+                  <tr key={row.id} className={`group hover:bg-blue-50 transition-colors ${hasRowMatch ? 'bg-yellow-50 border-l-2 border-yellow-400' : ''}`}>
+                    {/* Row number */}
+                    <td 
+                      className={`w-12 sm:w-16 ${rowHeight} bg-gradient-to-r from-gray-100 to-gray-50 border-r border-b border-gray-300 ${getTextSize()} text-gray-700 font-medium text-center sticky left-0 z-10 relative hover:bg-gray-200 transition-colors`}
+                      onContextMenu={(e) => handleContextMenu(e, 'row', rowIndex)}
+                    >
+                      <div className="flex items-center justify-center h-full">
+                        <span className="text-xs sm:text-sm">{row.id}</span>
+                      </div>
+                    </td>
+                    
+                    {visibleHeaders.map((_, colIndex) => {
+                      const isSelected = selectedCell?.row === row.id && selectedCell?.col === colIndex;
+                      const isMultiSelected = selectedCells.has(`${row.id}-${colIndex}`);
+                      const hasMatch = cellMatchesSearch(row, visibleFields[colIndex]);
+                      const cellContent = getCellValue(row.id, colIndex);
+                      return (
+                        <td 
+                          key={colIndex}
+                          className={`${rowHeight} border-r border-b border-gray-300 ${getTextSize()} cursor-cell relative transition-all duration-200 ${
+                            isSelected ? 'border-2 border-blue-500 bg-blue-50 shadow-sm' : 
+                            isMultiSelected ? 'bg-blue-100 border-blue-300' : 'hover:border-blue-300 hover:bg-gray-50'
+                          } ${hasMatch ? 'bg-yellow-50' : ''}`}
+                          style={{
+                            width: columnWidths[colIndex] || 120, 
+                            minWidth: Math.max(columnWidths[colIndex] || 120, 120),
+                            maxWidth: Math.min(columnWidths[colIndex] || 120, 400)
+                          }}
+                          onClick={(e) => handleCellSelection(row.id, colIndex, e)}
+                          onDoubleClick={() => handleCellDoubleClick(row.id, colIndex)}
+                          onContextMenu={(e) => handleContextMenu(e, 'cell', rowIndex, colIndex)}
+                        >
+                          <div className={`h-full flex ${cellContent.length > 50 ? 'items-start pt-2' : 'items-center'} ${cellViewMode === 'expanded' ? 'items-start pt-2' : ''} min-w-0`}>
+                            {renderCell(row, colIndex)}
+                          </div>
+                        </td>
+                      );
+                    })}
+                    {/* Add Column cell */}
+                    <td 
+                      className={`w-10 sm:w-12 ${rowHeight} border-r border-b border-gray-300 cursor-default bg-gray-50`}
+                    >
+                    </td>
+                  </tr>
+                );
+              })}
+              
+              {/* Add Row button row */}
+              <tr className="hover:bg-blue-50 transition-colors">
+                <td 
+                  className={`w-12 sm:w-16 ${getCellHeight()} bg-gradient-to-r from-gray-100 to-gray-50 border-r border-b border-gray-300 ${getTextSize()} text-gray-700 font-medium text-center sticky left-0 z-10`}
+                >
+                  <button
+                    onClick={addRow}
+                    className="flex items-center justify-center w-full h-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-all duration-200"
+                    title="Add new row (Ctrl+Shift+R)"
+                  >
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                </td>
+                {visibleHeaders.map((_, colIndex) => (
                   <td 
-                    className={`w-12 ${rowHeight} border-r border-b border-gray-300 cursor-default bg-gray-50`}
+                    key={colIndex}
+                    className={`${getCellHeight()} border-r border-b border-gray-300 cursor-default bg-gray-50`}
+                    style={{
+                      width: columnWidths[colIndex] || 120, 
+                      minWidth: Math.max(columnWidths[colIndex] || 120, 120),
+                      maxWidth: Math.min(columnWidths[colIndex] || 120, 400)
+                    }}
                   >
                   </td>
-                </tr>
-              );
-            })}
-            
-            {/* Add Row button row */}
-            <tr className="hover:bg-blue-50 transition-colors">
+                ))}
+                {/* Add Column cell for add row */}
                 <td 
-                className={`w-16 ${getCellHeight()} bg-gradient-to-r from-gray-100 to-gray-50 border-r border-b border-gray-300 ${getTextSize()} text-gray-700 font-medium text-center sticky left-0 z-10`}
-                >
-                <button
-                  onClick={addRow}
-                  className="flex items-center justify-center w-full h-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-all duration-200"
-                  title="Add new row (Ctrl+Shift+R)"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
-                </td>
-              {visibleHeaders.map((_, colIndex) => (
-                    <td 
-                      key={colIndex}
-                  className={`${getCellHeight()} border-r border-b border-gray-300 cursor-default bg-gray-50`}
-                  style={{width: columnWidths[colIndex] || 160, minWidth: 100}}
-                >
-                    </td>
-              ))}
-              {/* Add Column cell for add row */}
-                <td 
-                  className={`w-12 ${getCellHeight()} border-r border-b border-gray-300 cursor-default bg-gray-50`}
+                  className={`w-10 sm:w-12 ${getCellHeight()} border-r border-b border-gray-300 cursor-default bg-gray-50`}
                 >
                 </td>
               </tr>
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
       
       {/* Context Menu */}

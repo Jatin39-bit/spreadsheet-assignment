@@ -38,6 +38,7 @@ export default function HeaderBar({
   const [showCellViewDropdown, setShowCellViewDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSpreadsheetMenu, setShowSpreadsheetMenu] = useState(false);
+  const [showMobileToolbar, setShowMobileToolbar] = useState(false);
   
   // Local state for pending filter changes
   const [pendingFilterField, setPendingFilterField] = useState<FilterField | null>(filterField);
@@ -165,12 +166,13 @@ export default function HeaderBar({
     setShowSpreadsheetMenu(false);
     
     switch (action) {
-      case 'rename':
+      case 'rename': {
         const newName = prompt('Enter new spreadsheet name:', 'Spreadsheet 3');
         if (newName) {
           alert(`Spreadsheet renamed to "${newName}"`);
         }
         break;
+      }
       case 'duplicate':
         alert('Spreadsheet duplicated successfully!');
         break;
@@ -282,45 +284,52 @@ export default function HeaderBar({
   };
 
   return (
-    <div className="bg-white border-b border-gray-200">
-      {/* Top row - Breadcrumb, Search, Notifications and User */}
-      <div className="flex justify-between items-center px-4 py-2 border-b border-gray-200">
-        {/* Breadcrumb */}
-        <div className="flex items-center space-x-1 text-sm text-gray-600">
-          <div className="flex items-center space-x-1">
-            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+    <div className="bg-white border-b border-gray-200 shadow-sm relative z-[10000]">
+      {/* Top row - Brand/Logo, Spreadsheet Name, Search, Notifications, Profile */}
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2">
+        {/* Left side - Brand/Logo and Spreadsheet Name */}
+        <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 min-w-0 flex-1">
+          {/* Brand/Logo */}
+          <div className="flex items-center space-x-2 flex-shrink-0">
+            <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded flex items-center justify-center">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
-            <button 
-              onClick={() => alert('Navigate to Workspace')}
-              className="hover:text-gray-800 cursor-pointer hover:underline"
-            >
-              Workspace
-            </button>
+            </div>
+            <div className="text-sm font-semibold text-gray-800 hidden sm:block">
+              Spreadsheet Pro
+            </div>
           </div>
-          <span className="text-gray-400">{'>'}</span>
-          <button 
-            onClick={() => alert('Navigate to Folder 2')}
-            className="hover:text-gray-800 cursor-pointer hover:underline"
-          >
-            Folder 2
-          </button>
-          <span className="text-gray-400">{'>'}</span>
-          <div className="flex items-center space-x-1">
-            <span className="font-medium text-gray-900">Spreadsheet 3</span>
-            <div className="relative">
+          
+          {/* Breadcrumb and Spreadsheet Name */}
+          <div className="flex items-center space-x-1 sm:space-x-2 min-w-0 flex-1">
+            <div className="flex items-center space-x-1 text-xs sm:text-sm text-gray-500 truncate">
+              <span className="truncate">Home</span>
+              <svg className="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+              <span className="truncate">Spreadsheets</span>
+              <svg className="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+            <span className="text-sm sm:text-base font-medium text-gray-800 truncate">
+              <span className="hidden md:inline">Spreadsheet 3</span>
+              <span className="md:hidden">Sheet 3</span>
+            </span>
+            <div className="relative flex-shrink-0">
               <button
                 onClick={() => setShowSpreadsheetMenu(!showSpreadsheetMenu)}
-                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                className="p-1.5 hover:bg-gray-100 rounded transition-colors  bg-white shadow-sm"
                 title="More options"
               >
-                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                 </svg>
               </button>
               
               {showSpreadsheetMenu && (
-                <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-[9999]">
                   <div className="py-1">
                     <button
                       onClick={() => handleSpreadsheetMenuAction('rename')}
@@ -361,146 +370,173 @@ export default function HeaderBar({
         </div>
         
         {/* Search, Notifications and User */}
-        <div className="flex items-center space-x-3">
-          <form onSubmit={handleSearch} className="flex items-center space-x-2">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              value={localSearchTerm}
-              onChange={(e) => {
-                setLocalSearchTerm(e.target.value);
-                // Real-time search as user types
-                if (e.target.value === '') {
-                  onSearch('');
-                } else {
-                  onSearch(e.target.value);
-                }
-              }}
-              placeholder="Search within sheet"
-              className={`border border-gray-300 rounded px-3 py-2 text-sm placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent w-56 bg-gray-50 ${
-                isSearching ? 'bg-yellow-50' : ''
-              }`}
-              disabled={isSearching}
-            />
-            {localSearchTerm && (
-              <button
-                type="button"
-                onClick={clearSearch}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-          </form>
-          
-          {/* Notifications */}
-          <div className="relative">
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-              title="Notifications"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.73 21a2 2 0 0 1-3.46 0" />
+        <div className="flex items-center w-full space-x-2 sm:flex-none sm:justify-end sm:space-x-3 md:w-auto lg:w-auto min-w-0 flex-shrink-0">
+          {/* Search bar */}
+          <div className="flex-1 sm:flex-none md:flex-none min-w-0">
+            <form onSubmit={handleSearch} className="flex items-center space-x-2 min-w-0">
+              <svg className="w-4 h-4 text-gray-400 hidden sm:block flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 bg-green-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-medium text-[10px]">
-                  {unreadCount}
-                </span>
+              <input
+                type="text"
+                value={localSearchTerm}
+                onChange={(e) => {
+                  setLocalSearchTerm(e.target.value);
+                  // Real-time search as user types
+                  if (e.target.value === '') {
+                    onSearch('');
+                  } else {
+                    onSearch(e.target.value);
+                  }
+                }}
+                placeholder="Search..."
+                className={`border border-gray-300 rounded px-2 sm:px-3 py-1.5 sm:py-2 text-sm placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent w-full sm:w-32 md:w-36 lg:w-48 bg-gray-50 min-w-0 ${
+                  isSearching ? 'bg-yellow-50' : ''
+                }`}
+                disabled={isSearching}
+              />
+              {localSearchTerm && (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               )}
-            </button>
-            
-            {showNotifications && (
-              <div className="absolute top-full right-0 mt-1 w-80 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-                <div className="p-3 border-b border-gray-200 flex justify-between items-center">
-                  <h3 className="font-medium text-gray-900">Notifications</h3>
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={handleMarkAllAsRead}
-                      className="text-xs text-blue-600 hover:text-blue-800"
-                    >
-                      Mark all as read
-                    </button>
-                  )}
-                </div>
-                <div className="max-h-64 overflow-y-auto">
-                  {notifications.map(notification => (
-                    <button
-                      key={notification.id}
-                      onClick={() => handleNotificationClick(notification.id)}
-                      className={`w-full text-left p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 ${
-                        notification.unread ? 'bg-blue-50' : ''
-                      }`}
-                    >
-                      <div className="flex items-start space-x-2">
-                        <div className={`w-2 h-2 rounded-full mt-2 ${
-                          notification.type === 'info' ? 'bg-blue-500' :
-                          notification.type === 'success' ? 'bg-green-500' :
-                          notification.type === 'warning' ? 'bg-yellow-500' :
-                          'bg-gray-500'
-                        }`} />
-                        <div className="flex-1">
-                          <p className={`text-sm ${notification.unread ? 'font-medium text-gray-900' : 'text-gray-700'}`}>
-                            {notification.message}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">{notification.time}</p>
-                        </div>
-                        {notification.unread && (
-                          <div className="w-2 h-2 bg-blue-600 rounded-full mt-1" />
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-                {notifications.length === 0 && (
-                  <div className="p-4 text-center text-gray-500 text-sm">
-                    No notifications
-                  </div>
-                )}
-              </div>
-            )}
+            </form>
           </div>
           
-          <button 
-            onClick={handleUserProfile}
-            className="flex items-center space-x-2 px-2 py-1 hover:bg-gray-200 rounded transition-colors"
-          >
-            <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
-              JD
+          {/* Notifications and Profile grouped together */}
+          <div className="flex items-center space-x-2 flex-shrink-0">
+            {/* Notifications */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-1.5 sm:p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors  bg-white shadow-sm"
+                title="Notifications"
+              >
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 sm:top-1 sm:right-1 bg-green-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-medium text-[10px]">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+              
+              {showNotifications && (
+                <div className="absolute top-full right-0 mt-1 w-72 sm:w-80 bg-white border border-gray-200 rounded-md shadow-lg z-[9999]">
+                  <div className="p-3 border-b border-gray-200 flex justify-between items-center">
+                    <h3 className="font-medium text-gray-900">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllAsRead}
+                        className="text-xs text-blue-600 hover:text-blue-800"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {notifications.map(notification => (
+                      <button
+                        key={notification.id}
+                        onClick={() => handleNotificationClick(notification.id)}
+                        className={`w-full text-left p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 ${
+                          notification.unread ? 'bg-blue-50' : ''
+                        }`}
+                      >
+                        <div className="flex items-start space-x-2">
+                          <div className={`w-2 h-2 rounded-full mt-2 ${
+                            notification.type === 'info' ? 'bg-blue-500' :
+                            notification.type === 'success' ? 'bg-green-500' :
+                            notification.type === 'warning' ? 'bg-yellow-500' :
+                            'bg-gray-500'
+                          }`} />
+                          <div className="flex-1">
+                            <p className={`text-sm ${notification.unread ? 'font-medium text-gray-900' : 'text-gray-700'}`}>
+                              {notification.message}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">{notification.time}</p>
+                          </div>
+                          {notification.unread && (
+                            <div className="w-2 h-2 bg-blue-600 rounded-full mt-1" />
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  {notifications.length === 0 && (
+                    <div className="p-4 text-center text-gray-500 text-sm">
+                      No notifications
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="text-xs">
-              <div className="font-medium text-gray-900">John Doe</div>
-              <div className="text-gray-500 text-xs" title="johndoe@email.com">
-                {/* Limit email to 15 characters */}
-                {'johndoe@email.com'.length > 15 ? 'johndoe@email.com'.substring(0, 15) + '...' : 'johndoe@email.com'}
+            
+            {/* User Profile */}
+            <button 
+              onClick={handleUserProfile}
+              className="flex items-center space-x-2 px-2 py-1 hover:bg-gray-200 rounded transition-colors min-w-0"
+            >
+              <div className="w-5 h-5 sm:w-6 sm:h-6 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
+                JD
               </div>
-            </div>
-          </button>
+              <div className="text-xs hidden sm:block min-w-0">
+                <div className="font-medium text-gray-900 truncate">John Doe</div>
+                <div className="text-gray-500 text-xs truncate" title="johndoe@email.com">
+                  <span className="hidden md:inline">johndoe@email.com</span>
+                  <span className="md:hidden">john@...</span>
+                </div>
+              </div>
+            </button>
+          </div>
         </div>
       </div>
       
       {/* Bottom row - Toolbar and Actions */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-50">
-        {/* Left toolbar */}
-        <div className="flex items-center space-x-4">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between px-3 sm:px-4 py-2 bg-gray-50 space-y-2 lg:space-y-0">
+        {/* Mobile toolbar toggle */}
+        <div className="flex items-center justify-between lg:hidden">
           <div className="flex items-center space-x-1 text-sm">
             <span className="font-medium text-gray-700">Tool bar</span>
             <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </div>
-          
-          <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setShowMobileToolbar(!showMobileToolbar)}
+            className="flex items-center space-x-1 px-2 py-1 text-xs rounded hover:bg-gray-200 transition-colors font-medium text-gray-700"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            <span>Tools</span>
+          </button>
+        </div>
+
+      {/* Desktop toolbar header */}
+        <div className="hidden lg:flex items-center space-x-1 text-sm">
+          <span className="font-medium text-gray-700">Tool bar</span>
+          <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+        
+        {/* Left toolbar - Show on desktop or when mobile toolbar is expanded */}
+        <div className={`${showMobileToolbar ? 'flex' : 'hidden'} lg:flex flex-col lg:flex-row lg:items-center space-y-2 lg:space-y-0 lg:space-x-2 w-full lg:w-auto`}>
+          <div className="grid grid-cols-2 lg:flex lg:items-center gap-2 lg:gap-2">
             {/* Hide Fields Dropdown */}
             <div className="relative">
               <button 
                 onClick={() => setShowHideFieldsDropdown(!showHideFieldsDropdown)}
-                className={`flex items-center space-x-1 px-2 py-1 text-xs rounded transition-colors font-medium text-gray-700 ${
+                className={`flex items-center space-x-1 px-2 py-1.5 lg:py-1 text-xs rounded transition-colors font-medium text-gray-700 w-full lg:w-auto justify-center lg:justify-start ${
                   hiddenFields.length > 0 
                     ? 'bg-blue-100 text-blue-700 border border-blue-300' 
                     : 'hover:bg-gray-200'
@@ -509,14 +545,16 @@ export default function HeaderBar({
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
                 </svg>
-                <span>Hide fields {hiddenFields.length > 0 ? `(${hiddenFields.length} hidden)` : ''}</span>
+                <span className="hidden sm:inline">Hide fields</span>
+                <span className="sm:hidden">Hide</span>
+                {hiddenFields.length > 0 && <span className="hidden sm:inline">({hiddenFields.length})</span>}
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
               
               {showHideFieldsDropdown && (
-                <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-[9999]">
                   <div className="p-2">
                     <div className="text-xs font-medium text-gray-700 mb-2">Column Visibility</div>
                     {availableFields.map(field => (
@@ -544,7 +582,7 @@ export default function HeaderBar({
             <div className="relative">
               <button 
                 onClick={() => setShowSortDropdown(!showSortDropdown)}
-                className={`flex items-center space-x-1 px-2 py-1 text-xs rounded transition-colors font-medium text-gray-700 ${
+                className={`flex items-center space-x-1 px-2 py-1.5 lg:py-1 text-xs rounded transition-colors font-medium text-gray-700 w-full lg:w-auto justify-center lg:justify-start ${
                   sortField !== null 
                     ? 'bg-blue-100 text-blue-700 border border-blue-300' 
                     : 'hover:bg-gray-200'
@@ -553,14 +591,16 @@ export default function HeaderBar({
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
                 </svg>
-                <span>Sort {sortField ? `(${sortField} ${sortOrder?.toUpperCase()})` : ''}</span>
+                <span className="hidden sm:inline">Sort</span>
+                <span className="sm:hidden">Sort</span>
+                {sortField && <span className="hidden sm:inline">({sortField})</span>}
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
               
               {showSortDropdown && (
-                <div className="absolute top-full left-0 mt-1 w-44 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                <div className="absolute top-full left-0 mt-1 w-44 bg-white border border-gray-200 rounded-md shadow-lg z-[9999]">
                   <div className="p-2">
                     <div className="text-xs font-medium text-gray-700 mb-2">Sort by</div>
                     {sortOptions.map(option => (
@@ -595,7 +635,7 @@ export default function HeaderBar({
                     setPendingFilterValue(filterValue);
                   }
                 }}
-                className={`flex items-center space-x-1 px-2 py-1 text-xs rounded transition-colors font-medium text-gray-700 ${
+                className={`flex items-center space-x-1 px-2 py-1.5 lg:py-1 text-xs rounded transition-colors font-medium text-gray-700 w-full lg:w-auto justify-center lg:justify-start ${
                   filterField !== null 
                     ? 'bg-blue-100 text-blue-700 border border-blue-300' 
                     : 'hover:bg-gray-200'
@@ -604,14 +644,16 @@ export default function HeaderBar({
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
-                <span>Filter {filterField ? `(${filterField}: ${filterValue})` : ''}</span>
+                <span className="hidden sm:inline">Filter</span>
+                <span className="sm:hidden">Filter</span>
+                {filterField && <span className="hidden sm:inline">({filterField})</span>}
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
               
               {showFilterDropdown && (
-                <div className="absolute top-full left-0 mt-1 w-60 bg-white border border-gray-200 rounded-md shadow-lg z-50" data-filter-dropdown>
+                <div className="absolute top-full left-0 mt-1 w-60 bg-white border border-gray-200 rounded-md shadow-lg z-[9999]" data-filter-dropdown>
                   <div className="p-3">
                     <div className="text-xs font-medium text-gray-700 mb-3">Filter by</div>
                     {filterOptions.map(option => (
@@ -672,7 +714,7 @@ export default function HeaderBar({
             <div className="relative">
               <button 
                 onClick={() => setShowCellViewDropdown(!showCellViewDropdown)}
-                className={`flex items-center space-x-1 px-2 py-1 text-xs rounded transition-colors font-medium text-gray-700 ${
+                className={`flex items-center space-x-1 px-2 py-1.5 lg:py-1 text-xs rounded transition-colors font-medium text-gray-700 w-full lg:w-auto justify-center lg:justify-start ${
                   cellViewMode !== 'normal' 
                     ? 'bg-blue-100 text-blue-700 border border-blue-300' 
                     : 'hover:bg-gray-200'
@@ -681,14 +723,16 @@ export default function HeaderBar({
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
                 </svg>
-                <span>Cell view ({cellViewMode})</span>
+                <span className="hidden sm:inline">Cell view</span>
+                <span className="sm:hidden">View</span>
+                <span className="hidden sm:inline">({cellViewMode})</span>
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
               
               {showCellViewDropdown && (
-                <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-gray-200 rounded-md shadow-lg z-[9999]">
                   <div className="p-2">
                     <div className="text-xs font-medium text-gray-700 mb-2">View Mode</div>
                     {cellViewOptions.map(option => (
@@ -706,16 +750,16 @@ export default function HeaderBar({
                   </div>
                 </div>
               )}
-            </div>
           </div>
         </div>
+        </div>
         
-        {/* Right side - Import, Export, Share, New Action */}
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center space-x-1 text-sm">
+        {/* Right side - Import, Export, Share, New Action - Show on desktop or when mobile toolbar is expanded */}
+        <div className={`${showMobileToolbar ? 'flex' : 'hidden'} lg:flex flex-col lg:flex-row lg:items-center space-y-2 lg:space-y-0 lg:space-x-2 w-full lg:w-auto`}>
+          <div className="grid grid-cols-2 lg:flex lg:items-center gap-2 lg:gap-1 text-sm">
             <button 
               onClick={() => handleImportExportShare('Import')}
-              className="flex items-center space-x-1 px-2 py-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded text-xs transition-colors"
+              className="flex items-center justify-center lg:justify-start space-x-1 px-2 py-1.5 lg:py-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded text-xs transition-colors"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
@@ -725,7 +769,7 @@ export default function HeaderBar({
             
             <button 
               onClick={() => handleImportExportShare('Export')}
-              className="flex items-center space-x-1 px-2 py-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded text-xs transition-colors"
+              className="flex items-center justify-center lg:justify-start space-x-1 px-2 py-1.5 lg:py-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded text-xs transition-colors"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -735,21 +779,21 @@ export default function HeaderBar({
             
             <button 
               onClick={() => handleImportExportShare('Share')}
-              className="flex items-center space-x-1 px-2 py-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded text-xs transition-colors"
+              className="flex items-center justify-center lg:justify-start space-x-1 px-2 py-1.5 lg:py-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded text-xs transition-colors"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
               </svg>
               <span>Share</span>
             </button>
+            
+            <button 
+              onClick={handleNewAction}
+              className="flex items-center justify-center space-x-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors col-span-2 lg:col-span-1"
+            >
+              <span>+ New Action</span>
+            </button>
           </div>
-          
-          <button 
-            onClick={handleNewAction}
-            className="flex items-center space-x-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors"
-          >
-            <span>+ New Action</span>
-          </button>
         </div>
       </div>
 

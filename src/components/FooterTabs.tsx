@@ -97,36 +97,40 @@ export default function FooterTabs() {
 
   return (
     <div className="bg-white border-t border-gray-200 mt-auto">
-      <div className="flex items-center overflow-x-auto">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => handleTabClick(tab.id, tab.name)}
-            onContextMenu={(e) => handleTabRightClick(e, tab.id)}
-            onDoubleClick={() => handleTabDoubleClick(tab.id)}
-            className={`flex items-center space-x-2 px-4 py-2 text-xs font-medium border-b-2 transition-all duration-200 whitespace-nowrap ${
-              activeTabId === tab.id
-                ? "border-green-500 text-green-600 bg-green-50 shadow-sm"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-            }`}
-            title={`${tab.name}${tab.count ? ` (${tab.count} items)` : ''}\nRight-click to delete, double-click to rename`}
-          >
-            <span>{tab.name}</span>
-            {tab.count !== undefined && (
-              <span className={`px-1.5 py-0.5 rounded-full text-xs ${
+      <div className="flex items-center overflow-x-auto scrollbar-hide">
+        {/* Tabs with horizontal scrolling */}
+        <div className="flex items-center min-w-max">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => handleTabClick(tab.id, tab.name)}
+              onContextMenu={(e) => handleTabRightClick(e, tab.id)}
+              onDoubleClick={() => handleTabDoubleClick(tab.id)}
+              className={`flex items-center space-x-2 px-3 sm:px-4 py-2 text-xs font-medium border-b-2 transition-all duration-200 whitespace-nowrap ${
                 activeTabId === tab.id
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-gray-100 text-gray-600'
-              }`}>
-                {tab.count}
-              </span>
-            )}
-          </button>
-        ))}
+                  ? "border-green-500 text-green-600 bg-green-50 shadow-sm"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+              }`}
+              title={`${tab.name}${tab.count ? ` (${tab.count} items)` : ''}\nRight-click to delete, double-click to rename`}
+            >
+              <span className="truncate max-w-[120px] sm:max-w-none">{tab.name}</span>
+              {tab.count !== undefined && (
+                <span className={`px-1.5 py-0.5 rounded-full text-xs ${
+                  activeTabId === tab.id
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
         
+        {/* Add tab button */}
         <button 
           onClick={handleAddTab}
-          className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors ml-2"
+          className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors ml-2 flex-shrink-0"
           title="Add new tab"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -135,7 +139,7 @@ export default function FooterTabs() {
         </button>
         
         {/* Tab management options */}
-        <div className="flex items-center ml-auto pr-4">
+        <div className="flex items-center ml-auto pr-2 sm:pr-4 flex-shrink-0">
           <button
             onClick={() => {
               const tabNames = tabs.map(tab => `${tab.name}${tab.count ? ` (${tab.count})` : ''}`).join('\n');

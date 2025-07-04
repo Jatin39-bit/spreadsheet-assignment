@@ -13,6 +13,7 @@ export interface SpreadsheetRow {
   priority: Priority;
   dueDate: string;
   estValue: string;
+  [key: string]: string | number | Status | Priority;
 }
 
 export interface Tab {
