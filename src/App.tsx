@@ -44,7 +44,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col h-screen bg-gray-50 min-w-0">
       <HeaderBar 
         onHideFields={handleHideFields}
         onSort={handleSort}
@@ -59,7 +59,7 @@ export default function App() {
         searchTerm={searchTerm}
         cellViewMode={cellViewMode}
       />
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden min-h-0">
         <SpreadsheetTable 
           hiddenFields={hiddenFields}
           sortField={sortField}
